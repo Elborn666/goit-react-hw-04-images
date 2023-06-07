@@ -1,4 +1,3 @@
-import React, { Component } from 'react';
 import Searchbar from "./Searchbar/Searchbar";
 import ImageGallery from "./ImageGallery/ImageGallery";
 import Loader from "./Loader/Loader"
@@ -7,126 +6,127 @@ import Modal from "./Modal/Modal";
 import css from "./App.module.css";
 import { ToastContainer, toast, Flip } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import {getImages} from 'services/getImages';
+import { getImages } from 'services/getImages';
+import { useState, useEffect } from 'react';
 
 
-class App extends Component {
-  state = {
-    images: [],
-    isLoading: false,
-    error: null,
-    searchQuery: '',
-    page: 1,
-    showModal: false,
-    selectedImage: null,
-    isLastPage: false,
-    isButtonShow: false,
-  };
+function App() {
+  const [images, setImages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [isLastPage, setIsLastPage] = useState(false);
+  const [isButtonShow, setIsButtonShow] = useState(false);
 
-  componentDidUpdate(_prevProps, prevState) {
-    const prevQuery = prevState.searchQuery;
-    const nextQuery = this.state.searchQuery;
-    const prevPage = prevState.page;
-    const nextPage = this.state.page;
-
-    if (prevQuery !== nextQuery) {
-      this.setState({ page: 1, images: [], isButtonShow: false });
+  //==============================================================================================================
+  useEffect((nextQuery, nextPage) => {
+    if (!searchQuery) {
+      return;
+    }
+    if (searchQuery !== nextQuery) {
+      setPage(1);
+      setImages([]);
+      setIsButtonShow(false);
       if (nextPage === 1) {
-        this.fetchGalleryItems(nextQuery, nextPage);
+        fetchGalleryItems(nextQuery, nextPage);
       }
-    } else if (prevPage !== nextPage) {
-      this.fetchGalleryItems(nextQuery, nextPage);
-    }
-  }
-
-  async fetchGalleryItems (nextQuery, nextPage) {
-    this.setState({ isLoading: true, error: false });
-    const { hits, totalHits } = await getImages(nextQuery, nextPage);
-
-    const newData = hits.map(
-      ({ id, tags, webformatURL, largeImageURL }) => ({
-        id,
-        tags,
-        webformatURL,
-        largeImageURL,
-      })
-    );
-    const currentData = [...this.state.images, ...newData];
-
-    this.setState(prevState => ({
-      images: [...prevState.images, ...newData],
-    }));
-
-    if (!totalHits) {
-      this.setState({ isLoading: false, error: true });
-      return toast.warn(
-        'Sorry, there are no images matching your search query. Please try again.'
-      );
-    }
-    if (currentData.length >= totalHits) {
-      this.setState({
-        isLoading: false,
-        isButtonShow: false,
-        error: false,
-      });
-      return;
+    } else if (page !== nextPage) {
+      fetchGalleryItems(nextQuery, nextPage);
     }
 
-    this.setState({
-      isLoading: false,
-      isButtonShow: true,
-      error: false,
-    });
-  };
+    async function fetchGalleryItems(nextQuery, nextPage) {
+      setIsLoading(true);
+      setError(false);
+      const { hits, totalHits } = await getImages(nextQuery, nextPage);
   
-  handleSubmit = searchQuery => {
-    if (this.state.searchQuery === searchQuery) {
+      const newData = hits.map(
+        ({ id, tags, webformatURL, largeImageURL }) => ({
+          id,
+          tags,
+          webformatURL,
+          largeImageURL,
+        })
+      );
+      const currentData = [...images, ...newData];
+  
+      setImages(prevState => [...prevState.images, ...newData])
+  
+      if (!totalHits) {
+        setIsLoading(false)
+        setError(true)
+        return toast.warn(
+          'Sorry, there are no images matching your search query. Please try again.'
+        );
+      }
+      if (currentData.length >= totalHits) {
+        setIsLoading(false);
+        setIsButtonShow(false);
+        setError(false);
+  
+        return;
+      }
+  
+      if (currentData.length <= totalHits) {
+        setIsLoading(false);
+        setIsButtonShow(true);
+        setError(false);
+  
+        return;
+      }
+    };
+
+  },)
+
+  //==================================================================================================================
+  const handleSubmit = newQuery => {
+    if (searchQuery === newQuery) {
       return;
     }
-    this.setState({ searchQuery: searchQuery, page: 1, images: [], error: null, isLastPage: false });
+    setSearchQuery(newQuery);
+    setPage(1);
+    setImages([]);
+    setError(null);
+    setIsLastPage(false)
   };
 
-  handleImageClick = image => {
-    this.setState({ selectedImage: image, showModal: true });
-    document.body.style.overflow = 'hidden';
+  const handleImageClick = image => {
+    setSelectedImage(image);
+    setShowModal(true);
   };
 
-  handleModalClose = () => {
-    this.setState({ selectedImage: null, showModal: false });
-    document.body.style.overflow = 'auto';
+  const handleModalClose = () => {
+    setSelectedImage(null);
+    setShowModal(false);
   };
 
-  onLoadMore = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
+  const onLoadMore = () => {
+    setPage(prevState => prevState.page + 1)
   };
 
-  render() {
-    const { images, isLoading, error, showModal, selectedImage, isLastPage } = this.state;
+  return (
+    <div className={css.App}>
+      <ToastContainer transition={Flip} />
+      <Searchbar onSubmit={handleSubmit} />
 
-    return (
-      <div className={css.App}>
-        <ToastContainer transition={Flip} />
-        <Searchbar onSubmit={this.handleSubmit} />
+      {error && <p>Error: {error}</p>}
 
-        {error && <p>Error: {error}</p>}
+      <ImageGallery images={images} onItemClick={handleImageClick} />
 
-        <ImageGallery images={images} onItemClick={this.handleImageClick} />
-
-        {isLoading && <Loader />}
+      {isLoading && <Loader />}
 
 
-        {!isLoading && images.length > 0 && !isLastPage && (
-          <Button onClick={this.onLoadMore} />
-        )}
+      {!isLoading && images.length > 0 && !isLastPage && (
+        <Button onClick={onLoadMore} />
+      )}
 
-        {showModal && (
-          <Modal image={selectedImage} onClose={this.handleModalClose} />
-        )}
-      </div>
-    )
-  }
+      {showModal && (
+        <Modal image={selectedImage} onClose={handleModalClose} />
+      )}
+    </div>
+  )
 };
 
 
