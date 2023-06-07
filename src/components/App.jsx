@@ -18,8 +18,7 @@ function App() {
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
-  const [isLastPage, setIsLastPage] = useState(false);
-  // const [isButtonShow, setIsButtonShow] = useState(false);
+  const [totalHits, setTotalHits] = useState(0);
 
   //==============================================================================================================
   useEffect(() => {
@@ -28,11 +27,12 @@ function App() {
     }
 
     async function fetchGalleryItems(searchQuery, page) {
-      setIsLoading(true);
+      setIsLoading(false);
       setError(false);
-      const { hits, totalHits } = await getImages(searchQuery, page);
-  
-      const newData = hits.map(
+
+      const  responseImages = await getImages(searchQuery, page);
+
+      const newData =  responseImages.hits.map(
         ({ id, tags, webformatURL, largeImageURL }) => ({
           id,
           tags,
@@ -40,43 +40,21 @@ function App() {
           largeImageURL,
         })
       );
-      const currentData = [...images, ...newData];
   
-      setImages(prevImage => [...prevImage, ...newData])
-  
-      if (!totalHits) {
+      setImages(prevImage => [...prevImage, ...newData]);
+      setTotalHits(responseImages.totalHits);
+
+      if (!responseImages.hits.length) {
         setIsLoading(false)
         setError(true)
         return toast.warn(
           'Sorry, there are no images matching your search query. Please try again.'
         );
       }
-      if (currentData.length >= totalHits) {
-        setIsLoading(false);
-        setIsLastPage(false);
-        setError(false);
-  
-        return;
-      }
-  
-      if (currentData.length <= totalHits) {
-        setIsLoading(false);
-        setIsLastPage(true);
-        setError(false);
-  
-        return;
-      }
     };
 
-    fetchGalleryItems()
-  },[page, searchQuery, images])
-
-
-  // if (nextPage === 1) {
-  //   fetchGalleryItems(newQuery, nextPage);
-  // } else if (page !== nextPage) {
-  // fetchGalleryItems(newQuery, nextPage);
-  // }
+    fetchGalleryItems(searchQuery, page)
+  },[page, searchQuery])
 
   //==================================================================================================================
   const handleSubmit = newQuery => {
@@ -85,9 +63,9 @@ function App() {
     }
     setSearchQuery(newQuery);
     setPage(1);
+    setTotalHits(1);
     setImages([]);
     setError(null);
-    setIsLastPage(false)
   };
 
   const handleImageClick = image => {
@@ -116,10 +94,10 @@ function App() {
       {isLoading && <Loader />}
 
 
-      {!isLoading && images.length > 0 && !isLastPage && (
+      {0 < images.length && images.length < totalHits && (
         <Button onClick={onLoadMore} />
       )}
-
+-
       {showModal && (
         <Modal image={selectedImage} onClose={handleModalClose} />
       )}
