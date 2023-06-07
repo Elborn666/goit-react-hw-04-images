@@ -19,28 +19,18 @@ function App() {
   const [showModal, setShowModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [isLastPage, setIsLastPage] = useState(false);
-  const [isButtonShow, setIsButtonShow] = useState(false);
+  // const [isButtonShow, setIsButtonShow] = useState(false);
 
   //==============================================================================================================
-  useEffect((nextQuery, nextPage) => {
+  useEffect(() => {
     if (!searchQuery) {
       return;
     }
-    if (searchQuery !== nextQuery) {
-      setPage(1);
-      setImages([]);
-      setIsButtonShow(false);
-      if (nextPage === 1) {
-        fetchGalleryItems(nextQuery, nextPage);
-      }
-    } else if (page !== nextPage) {
-      fetchGalleryItems(nextQuery, nextPage);
-    }
 
-    async function fetchGalleryItems(nextQuery, nextPage) {
+    async function fetchGalleryItems(searchQuery, page) {
       setIsLoading(true);
       setError(false);
-      const { hits, totalHits } = await getImages(nextQuery, nextPage);
+      const { hits, totalHits } = await getImages(searchQuery, page);
   
       const newData = hits.map(
         ({ id, tags, webformatURL, largeImageURL }) => ({
@@ -52,7 +42,7 @@ function App() {
       );
       const currentData = [...images, ...newData];
   
-      setImages(prevState => [...prevState.images, ...newData])
+      setImages(prevImage => [...prevImage, ...newData])
   
       if (!totalHits) {
         setIsLoading(false)
@@ -63,7 +53,7 @@ function App() {
       }
       if (currentData.length >= totalHits) {
         setIsLoading(false);
-        setIsButtonShow(false);
+        setIsLastPage(false);
         setError(false);
   
         return;
@@ -71,14 +61,22 @@ function App() {
   
       if (currentData.length <= totalHits) {
         setIsLoading(false);
-        setIsButtonShow(true);
+        setIsLastPage(true);
         setError(false);
   
         return;
       }
     };
 
-  },)
+    fetchGalleryItems()
+  },[page, searchQuery, images])
+
+
+  // if (nextPage === 1) {
+  //   fetchGalleryItems(newQuery, nextPage);
+  // } else if (page !== nextPage) {
+  // fetchGalleryItems(newQuery, nextPage);
+  // }
 
   //==================================================================================================================
   const handleSubmit = newQuery => {
@@ -103,7 +101,7 @@ function App() {
   };
 
   const onLoadMore = () => {
-    setPage(prevState => prevState.page + 1)
+    setPage(prevPage => prevPage + 1)
   };
 
   return (
